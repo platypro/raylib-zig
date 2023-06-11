@@ -7,7 +7,6 @@
 
 const std = @import("std");
 const Builder = std.build.Builder;
-const raylib = @import("lib.zig");
 
 const Program = struct {
     name: []const u8,
@@ -16,8 +15,21 @@ const Program = struct {
 };
 
 pub fn build(b: *Builder) void {
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
+
+    const raylib_dep = b.dependency("raylib", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const raylib_module = b.addModule("raylib", .{
+        .source_file = .{ .path = "lib/raylib-zig.zig" },
+    });
+
+    const raylib_math_module = b.addModule("raylib-math", .{
+        .source_file = .{ .path = "lib/raylib-zig-math.zig" },
+    });
 
     const examples = [_]Program{
         .{
@@ -59,12 +71,12 @@ pub fn build(b: *Builder) void {
             .name = "texture_outline",
             .path = "examples/shaders/texture_outline.zig",
             .desc = "Uses a shader to create an outline around a sprite",
-        }
-        // .{
-        //     .name = "models_loading",
-        //     .path = "examples/models/models_loading.zig",
-        //     .desc = "Loads a model and renders it",
-        // },
+        },
+        //.{
+        //    .name = "models_loading",
+        //    .path = "examples/models/models_loading.zig",
+        //    .desc = "Loads a model and renders it",
+        //},
         // .{
         //     .name = "shaders_basic_lighting",
         //     .path = "examples/shaders/shaders_basic_lighting.zig",
@@ -73,19 +85,19 @@ pub fn build(b: *Builder) void {
     };
 
     const examples_step = b.step("examples", "Builds all the examples");
-    const system_lib = b.option(bool, "system-raylib", "link to preinstalled raylib libraries") orelse false;
-
     for (examples) |ex| {
-        const exe = b.addExecutable(ex.name, ex.path);
+        const exe = b.addExecutable(.{
+            .name = ex.name,
+            .root_source_file = .{ .path = ex.path },
+            .target = target,
+            .optimize = optimize,
+        });
 
-        exe.setBuildMode(mode);
-        exe.setTarget(target);
+        exe.linkLibrary(raylib_dep.artifact("raylib"));
+        exe.addModule("raylib", raylib_module);
+        exe.addModule("raylib-math", raylib_math_module);
 
-        raylib.link(exe, system_lib);
-        raylib.addAsPackage("raylib", exe);
-        raylib.math.addAsPackage("raylib-math", exe);
-
-        const run_cmd = exe.run();
+        const run_cmd = b.addRunArtifact(exe);
         const run_step = b.step(ex.name, ex.desc);
         run_step.dependOn(&run_cmd.step);
         examples_step.dependOn(&exe.step);

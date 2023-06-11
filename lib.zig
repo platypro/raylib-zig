@@ -1,6 +1,6 @@
 const std = @import("std");
-const Builder = std.build.Builder;
-const LibExeObjStep = std.build.LibExeObjStep;
+const Build = std.Build;
+const CompileStep = Build.CompileStep;
 const rl = @import("raylib/src/build.zig");
 
 var ran_git = false;
@@ -10,12 +10,12 @@ fn getSrcDir() []const u8 {
     return std.fs.path.dirname(@src().file) orelse ".";
 }
 
-pub fn link(exe: *LibExeObjStep, system_lib: bool) void {
+pub fn link(build: *Build, exe: *CompileStep, system_lib: bool) void {
     if (system_lib) {
         exe.linkSystemLibrary("raylib");
         return;
     } else {
-        exe.linkLibrary(rl.addRaylib(exe.builder, exe.target));
+        exe.linkLibrary(rl.addRaylib(build, exe.target));
     }
 
     const target_os = exe.target.toTarget().os.tag;
@@ -54,11 +54,11 @@ pub fn link(exe: *LibExeObjStep, system_lib: bool) void {
     }
 }
 
-pub fn addAsPackage(name: []const u8, to: *LibExeObjStep) void {
+pub fn addAsPackage(name: []const u8, to: *CompileStep) void {
     to.addPackagePath(name, srcdir ++ "/lib/raylib-zig.zig");
 }
 pub const math = struct {
-    pub fn addAsPackage(name: []const u8, to: *LibExeObjStep) void {
+    pub fn addAsPackage(name: []const u8, to: *CompileStep) void {
         to.addPackagePath(name, srcdir ++ "/lib/raylib-zig-math.zig");
     }
 };
